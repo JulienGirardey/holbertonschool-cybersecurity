@@ -1,3 +1,2 @@
 #!/bin/bash
-chattr -i $1
-rm $1
+chattr -i $1 | rm $1
