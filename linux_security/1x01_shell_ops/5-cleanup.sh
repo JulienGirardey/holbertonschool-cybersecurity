@@ -1,6 +1,6 @@
 #!/bin/bash
 while read line; do
-    if id line; then
+    if id line 2>/dev/null; then
         passwd -l $line
     else
         echo "User $line not found"
