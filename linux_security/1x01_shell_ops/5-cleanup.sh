@@ -1,7 +1,7 @@
 #!/bin/bash
-while read -r line; do
-    if id line 2>/dev/null; then
-        passwd -l $line
+while read line; do
+    if id line; then
+        usermod -L $line
     else
         echo "User $line not found"
     fi
