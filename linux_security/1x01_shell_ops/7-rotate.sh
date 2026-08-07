@@ -4,7 +4,7 @@ if [ ! -d "$ARG" ]; then
     exit 1
 fi
 mkdir -p "$ARG"/backups
-find "$ARG" -type f -name "*.log" | while read -r file; do
+for file in "$ARG"/*.log; do
     if [ $(stat -c%s "$file") -gt 1024 ]; then
         gzip "$file"
         mv "$file.gz" "$ARG"/backups/
