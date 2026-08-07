@@ -1,5 +1,5 @@
 #!/bin/bash
-while read line; do
+while read -r line; do
     if id line 2>/dev/null; then
         passwd -l $line
     else
