@@ -12,7 +12,7 @@ edit_sshd_config(){
     /usr/bin/echo "All lines beginning with '${PARAM}' were deleted from ${file}."
   done
   /usr/bin/echo "PermitRootLogin no" >> ${file}
-  /usr/bin/echo "PermitRootLogin no was added to ${file}."
+  /usr/bin/echo "'PermitRootLogin no' was added to ${file}."
   /usr/bin/echo "${param[2]} yes" >> ${file}
   /usr/bin/echo "'${param[2]} yes' was added to ${file}."
   /usr/bin/echo "${param[3]} no" >> ${file}
