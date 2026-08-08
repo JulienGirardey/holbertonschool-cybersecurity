@@ -1,7 +1,7 @@
 #!/bin/bash
 
 file="$1"
-param[1]="PermitRootLogin "
+param[1]="PermitRootLogin"
 param[2]="PubkeyAuthentication"
 param[3]="PasswordAuthentication"
 
