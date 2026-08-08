@@ -2,8 +2,8 @@
 
 file="$1"
 # param[1]="PermitRootLogin"
-param[2]="PubkeyAuthentication"
-param[3]="PasswordAuthentication"
+# param[2]="PubkeyAuthentication"
+# param[3]="PasswordAuthentication"
 
 edit_sshd_config(){
   for PARAM in ${param[@]}
@@ -13,10 +13,10 @@ edit_sshd_config(){
   done
   /usr/bin/echo "PermitRootLogin no" >> ${file}
   /usr/bin/echo "'PermitRootLogin no' was added to ${file}."
-  /usr/bin/echo "${param[2]} yes" >> ${file}
-  /usr/bin/echo "'${param[2]} yes' was added to ${file}."
-  /usr/bin/echo "${param[3]} no" >> ${file}
-  /usr/bin/echo "'${param[3]} no' was added to ${file}."
+  /usr/bin/echo "PubkeyAuthentication yes" >> ${file}
+  /usr/bin/echo "'PubkeyAuthentication yes' was added to ${file}."
+  /usr/bin/echo "PasswordAuthentication no" >> ${file}
+  /usr/bin/echo "'PasswordAuthentication no' was added to ${file}."
 }
 
 reload_sshd(){
