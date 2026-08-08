@@ -1,17 +1,4 @@
 #!/bin/bash
-#
-# Description:
-# This script sets certain parameters in /etc/ssh/sshd_config.
-# It's not production ready and only used for training purposes.
-#
-# What should it do?
-# * Check whether a /etc/ssh/sshd_config file exists
-# * Create a backup of this file
-# * Edit the file to set certain parameters
-# * Reload the sshd configuration
-# To enable debugging mode remove '#' from the following line
-#set -x
-# Variables
 
 file="$1"
 param[1]="PermitRootLogin "
