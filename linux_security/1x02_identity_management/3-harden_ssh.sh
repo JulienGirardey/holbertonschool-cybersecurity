@@ -43,4 +43,5 @@ then
 file="/etc/ssh/sshd_config"
 fi
 edit_sshd_config
+sshd -t
 reload_sshd
