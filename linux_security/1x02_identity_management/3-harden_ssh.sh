@@ -24,24 +24,6 @@ reload_sshd(){
   /usr/bin/echo "Run '/usr/bin/systemctl reload sshd.service'...OK"
 }
 
-# main
-while getopts .h. OPTION
-do
-  case $OPTION in
-    h)
-    usage
-    exit;;
-    ?)
-    usage
-    exit;;
-  esac
-done
-
-if [ -z "${file}" ]
-then
-
-file="/etc/ssh/sshd_config"
-fi
 edit_sshd_config
 sshd -t
 reload_sshd
