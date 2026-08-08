@@ -1,9 +1,7 @@
 #!/bin/bash
-if dpkg -s "$1" >/dev/null 2>&1; then
-    echo "$1 is installed."
-else
+FILE="$2"
+if ! dpkg -s "$1" >/dev/null 2>&1; then
     apt-get update
     apt-get install -y $1
 fi
-sed -i 's/^#\s*minlen\s*=.*/# minlen = 12/; s/^#\s*minclass\s*=.*/# minclass = 3/' /etc/security/pwquality.conf
-pam-auth-update --package
+sed -i '/pam_unix\.so/i password requisite pam_pwquality.so minlen=12 minclass=3' "$FILE"
