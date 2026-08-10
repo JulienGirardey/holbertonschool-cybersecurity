@@ -1,2 +1,2 @@
 #!/bin/bash
-ss -tan -4
+ss -lnt4
