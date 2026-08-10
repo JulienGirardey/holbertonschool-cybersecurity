@@ -1,2 +1,2 @@
 #!/bin/bash
-lsof -iTCP:$1
+lsof -iTCP:$1 -sTCP:LISTEN
