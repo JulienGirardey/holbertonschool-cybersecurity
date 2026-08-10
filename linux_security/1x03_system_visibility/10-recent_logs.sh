@@ -1,2 +1,3 @@
 #!/bin/bash
-date --since '30min ago' | cat $1 | grep 'sshd'
+start=$(date -d "-30 minutes" +%s)
+awk -v start="$start" '/sshd/ {date_log = $1 " " $2 " " $3; commande = "date -d \"" date_log "\" +%s"; commande | getline timestamp} timestamp>=start {print $0}' "$1"
