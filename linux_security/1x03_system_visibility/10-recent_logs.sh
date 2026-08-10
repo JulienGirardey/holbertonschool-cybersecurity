@@ -1,2 +1,2 @@
 #!/bin/bash
-journalctl -u sshd --since "30min ago" $1
+date -d '30 minutes ago' +%s
