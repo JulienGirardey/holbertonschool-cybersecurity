@@ -1,2 +1,2 @@
 #!/bin/bash
-date -d '30 minutes ago' +%s $1
+date --since '30min ago' | cat $1
