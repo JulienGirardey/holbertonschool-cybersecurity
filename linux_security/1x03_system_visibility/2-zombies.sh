@@ -1,2 +1,2 @@
 #!/bin/bash
-ps -eo | grep -w Z | awk '{print $2}'
+ps -eo pid,state | grep -w Z | awk '{print $2}'
