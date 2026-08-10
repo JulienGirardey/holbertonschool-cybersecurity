@@ -1,2 +1,2 @@
 #!/bin/bash
-lsof -i :$1
+lsof -iTCP: $1
