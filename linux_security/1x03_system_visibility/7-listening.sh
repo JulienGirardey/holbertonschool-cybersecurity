@@ -1,2 +1,2 @@
 #!/bin/bash
-ss -lnt4 | awk '$4 && ^: {print $1}'
+ss -lnt4 | awk 'NR>1'
