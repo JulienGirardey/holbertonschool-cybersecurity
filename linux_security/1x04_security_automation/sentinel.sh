@@ -32,3 +32,28 @@ check_integrity() {
 }
 
 check_integrity
+
+check_ports() {
+    ss -tlnp | awk 'NR>1 {print $4, $6}' | while read -r local_address process_info; do
+        port="${local_address##*:}"
+
+        if [[ "$process_info" =~ pid=([0-9]+) ]]; then
+            pid="${BASH_REMATCH[1]}"
+
+            allowed=false
+            for p in "${ALLOWED_PORTS[@]}"; do
+                if [[ "$port" -eq "$p" ]]; then
+                    allowed=true
+                    break
+                fi
+            done
+
+            if [ "$allowed" = false ]; then
+                kill -9 "$pid" 2>/dev/null
+                echo "ALERT: Killed rogue process on port $port"
+            fi
+        fi
+    done
+}
+
+check_ports
