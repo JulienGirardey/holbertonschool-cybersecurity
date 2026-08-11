@@ -15,11 +15,13 @@ check_services() {
     done
 }
 
+check_services
+
 check_integrity() {
     for file in ${FILES_TO_WATCH[@]}; do
-        GOLDEN="/var/backups/sentinel/sshd_config.gold/$(basename "$file").gold"
-        LIVE_HASH= $(md5sum "$file" | awk '{print $1}')
-        GOLD_HASH= $(md5sum "$GOLDEN" | awk '{print $1}')
+        GOLDEN="/var/backups/sentinel/$(basename "$file").gold"
+        LIVE_HASH=$(md5sum "$file" | awk '{print $1}')
+        GOLD_HASH=$(md5sum "$GOLDEN" | awk '{print $1}')
         if [ "$LIVE_HASH" = "$GOLD_HASH" ]; then
             echo "OK: $file integrity verified"
         else
@@ -29,5 +31,4 @@ check_integrity() {
     done
 }
 
-check_services
 check_integrity
