@@ -18,7 +18,7 @@ check_services() {
 check_services
 
 check_integrity() {
-    for file in ${FILES_TO_WATCH[@]}; do
+    for file in "${FILES_TO_WATCH[@]}"; do
         GOLDEN="/var/backups/sentinel/$(basename "$file").gold"
         LIVE_HASH=$(md5sum "$file" | awk '{print $1}')
         GOLD_HASH=$(md5sum "$GOLDEN" | awk '{print $1}')
