@@ -1,0 +1,10 @@
+[Unit]
+Description=Sentinel Security Agent
+
+[Service]
+Type=oneshot
+ExecStart=/opt/sentinel/sentinel.sh
+User=root
+
+[Install]
+WantedBy=multi-user.target
