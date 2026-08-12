@@ -57,3 +57,15 @@ check_ports() {
 }
 
 check_ports
+
+log() {
+    timestamp=$(date -u +%FT%TZ)
+    local component="$1"
+    local target="$2"
+    local status="$3"
+    local details="$4"
+    local timestamp
+    echo "{\"timestamp\": \"$timestamp\", \"target\": \"$target\", \"status\": \"$status\", \"details\": \"$details\"}" >> /var/log/sentiel.log
+}
+
+log
