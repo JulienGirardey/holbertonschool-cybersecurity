@@ -1,7 +1,2 @@
 #!/bin/bash
-CONV=({0..1}{0..1}{0..1}{0..1}{0..1}{0..1}{0..1}{0..1})
-ip=""
-for byte in `echo ${1} | tr "." " "`; do
-    ip="${ip}.${CONV[${byte}]}"
-done
-echo ${ip:1}
+for byte in `echo ${1} | tr "." " "`; do printf "%08d." "$(echo "obase=2;$byte" | bc)"; done | sed 's/\.$//'
