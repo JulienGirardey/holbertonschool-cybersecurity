@@ -1,2 +1,2 @@
 #!/bin/bash
-printf '%x\n' "$((2#$1))"
+echo "ibase=2;$1" | bc
