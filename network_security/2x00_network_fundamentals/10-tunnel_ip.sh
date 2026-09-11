@@ -1,2 +1,2 @@
 #!/bin/bash
-ip addr | awk '/inet / {print $2}' | cut -d/ -f1
+ip addr show tun0 | awk '/inet / {print $2}' | cut -d/ -f1
