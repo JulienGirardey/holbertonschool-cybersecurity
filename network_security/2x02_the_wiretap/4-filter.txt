@@ -1,0 +1,3 @@
+ip.src == 10.10.10.99 && tcp.dstport == 23
+dns || http
+tcp && tcp.port != 22
