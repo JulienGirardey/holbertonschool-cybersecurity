@@ -1,1 +1,1 @@
-gf
+cmd-relay.darknet-c2.io
