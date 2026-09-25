@@ -1,0 +1,1 @@
+dns.qry.name contains "darknet-c2.io" && dns.resp.type == 16
