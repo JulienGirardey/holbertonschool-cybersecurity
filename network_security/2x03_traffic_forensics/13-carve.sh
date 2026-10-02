@@ -1,2 +1,2 @@
 #!/bin/bash
-tshark -r "$1" --export-object http,directory && md5sum
+tshark -r "$1" --export-object http, && md5sum
