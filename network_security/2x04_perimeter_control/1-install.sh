@@ -1,5 +1,5 @@
 #!/bin/bash
 apt update
 apt install nftables
-systemctl enable --no-start nftables
+systemctl enable nftables --no-start
 apt install wireguard wireguard-tools
