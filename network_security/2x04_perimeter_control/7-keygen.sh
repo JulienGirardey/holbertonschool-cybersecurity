@@ -1,2 +1,2 @@
 #!/bin/bash
-wg genkey | wg pubkey
+wg genkey > server_private | wg pubkey > server_public
