@@ -1,2 +1,2 @@
 #!/bin/bash
-curl -s -o /dev/null -w "%{http_code}\n" -x ${PROXY:-http://localhost:3128} ${URL:-http://blocked.example.com}
+curl -s -o /dev/null -w "%{http_code}\n" -x ${PROXY:-http://localhost:3128} ${URL:-http://blocked.malware.com}
