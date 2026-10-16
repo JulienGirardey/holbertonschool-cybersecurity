@@ -1,0 +1,209 @@
+#cloud-config
+# ============================================================================
+# ACME Corporation Gateway Server Provisioning
+# Infrastructure Team | Change Request: CR-2025-11-847
+#
+# Server Role: Secure Gateway (Segment-B)
+# Environment: Production (DMZ-B)
+# Image: acme-ubuntu-22.04-standard-v4
+#
+# Provisioned by Infrastructure Automation Pipeline
+#
+# DEPLOYMENT:
+#   multipass launch 22.04 --name acme-gw01 \
+#     --cloud-init cloud-init.yaml \
+#     --memory 3G --cpus 2 --disk 10G
+#
+# ACCESS:
+#   multipass shell acme-gw01 or ssh engineer@IP
+# ============================================================================
+
+hostname: acme-gw01
+fqdn: acme-gw01.internal.acmecorp.net
+timezone: UTC
+locale: en_US.UTF-8
+
+package_update: true
+package_upgrade: false
+
+users:
+  - name: engineer
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    lock_passwd: false
+    passwd: "$6$bzacXC2mUYe2KF/H$mlTVdqcw3NQcjwefe4I8nD62XV0cxuo65H2Galjhx67Ce9DKUtZbMEAOvLdHffbCvLgxFWVz9NBmL9F/9dWDw0"
+    groups: [sudo, adm, syslog]
+
+  - name: svc-monitoring
+    system: true
+    shell: /usr/sbin/nologin
+    no_create_home: true
+
+  - name: svc-backup
+    system: true
+    shell: /usr/sbin/nologin
+    no_create_home: true
+
+ssh_pwauth: true
+disable_root: true
+
+packages:
+  - openssh-server
+  - iproute2
+  - net-tools
+  - iputils-ping
+  - tcpdump
+  - dnsutils
+  - curl
+  - wget
+  - at
+  - vim
+  - nano
+  - less
+  - tree
+  - man-db
+  - rsyslog
+  - logrotate
+  - cron
+  - git
+  - jq
+  - nftables
+  - conntrack
+  - conntrack-tools
+  - wireguard
+  - wireguard-tools
+  - prometheus-node-exporter
+  - ca-certificates
+  - openssl
+
+write_files:
+
+  - path: /etc/issue.net
+    content: |
+      ===============================================================================
+        ACME CORPORATION Ã¢â‚¬â€ AUTHORIZED ACCESS ONLY
+
+        This system is restricted to authorized personnel.
+        All activity may be monitored, logged, and audited.
+        Unauthorized access is strictly prohibited.
+      ===============================================================================
+
+  - path: /etc/ssh/sshd_config.d/banner.conf
+    content: |
+      Banner /etc/issue.net
+
+  - path: /etc/motd
+    content: |
+
+      ACME Corp Ã¢â‚¬â€ Secure Gateway
+      Hostname: acme-gw01.internal.acmecorp.net
+      Segment: DMZ-B
+
+      Change Request: CR-2025-11-847
+      Status: Pending security hardening validation
+
+  - path: /etc/default/motd-news
+    content: "ENABLED=0\n"
+
+  - path: /etc/hosts
+    content: |
+      127.0.0.1 localhost
+      127.0.1.1 acme-gw01.internal.acmecorp.net acme-gw01
+
+      # Segment-B Infrastructure
+      10.100.10.5     db-prod-01.internal.acmecorp.net db-prod-01
+      10.100.10.6     db-prod-02.internal.acmecorp.net db-prod-02
+      10.100.10.20    app-web-01.internal.acmecorp.net app-web-01
+      10.100.10.21    app-web-02.internal.acmecorp.net app-web-02
+      10.100.10.50    monitoring.internal.acmecorp.net monitoring
+      10.100.10.51    backup-srv.internal.acmecorp.net backup-srv
+      10.100.10.100   printer-floor3.internal.acmecorp.net printer-floor3
+
+  - path: /opt/acme/docs/network-inventory.txt
+    permissions: "0644"
+    content: |
+      ACME CORP Ã¢â‚¬â€ SEGMENT-B INVENTORY
+      Classification: INTERNAL
+
+      HOST               IP              ROLE
+      ---------------------------------------------------------
+      db-prod-01         10.100.10.5     PostgreSQL Primary
+      db-prod-02         10.100.10.6     PostgreSQL Replica
+      app-web-01         10.100.10.20    NGINX Frontend
+      app-web-02         10.100.10.21    NGINX Frontend
+      monitoring         10.100.10.50    Prometheus/Grafana
+      backup-srv         10.100.10.51    Backup Server
+      printer-floor3     10.100.10.100   Network Printer
+
+  - path: /opt/acme/docs/incident-summary.txt
+    permissions: "0644"
+    content: |
+      INCIDENT REF: INC-2025-1147
+      DATE: 2025-11-08
+
+      An internal device (printer-floor3) was compromised.
+      Lateral movement occurred toward database infrastructure.
+
+      Internal segmentation controls were not enforced at the time.
+
+      Gateway deployment has been initiated as part of remediation.
+
+  - path: /opt/acme/docs/security-audit-checklist.txt
+    permissions: "0644"
+    content: |
+      Gateway Security Validation Requirements:
+
+      - Default-deny firewall policy
+      - Restricted administrative access
+      - Encrypted remote access channel
+      - Controlled routing between segments
+      - Persistent configuration across reboot
+      - Logging of network activity
+
+      Auditor: External Cybersecurity Partner
+      Status: Pending review
+
+  - path: /var/log/acme-provision.log
+    permissions: "0644"
+    content: |
+      2025-11-15 09:12:33 [INFRA] acme-gw01 provisioned
+      2025-11-15 09:12:35 [INFRA] SSH enabled
+      2025-11-15 09:13:01 [MONITORING] Node exporter registered
+      2025-11-15 09:15:22 [INFRA] engineer account created
+      2025-11-16 02:00:00 [BACKUP] No backup policy defined
+      2025-11-17 03:00:00 [SCAN] Perimeter scan completed
+      2025-11-17 03:00:01 [SCAN] Open ports detected: 22/tcp, 9100/tcp
+      2025-11-17 03:00:02 [SCAN] No active firewall rules
+      2025-11-17 03:00:03 [SCAN] IP forwarding disabled
+
+runcmd:
+
+  - systemctl enable ssh
+  - systemctl start ssh
+
+  - systemctl enable atd
+  - systemctl start atd
+
+  - systemctl enable prometheus-node-exporter
+  - systemctl start prometheus-node-exporter
+
+  - systemctl enable nftables
+  - systemctl stop nftables
+
+  - sysctl -w net.ipv4.ip_forward=0
+
+  - nft flush ruleset || true
+  - iptables -F 2>/dev/null || true
+  - iptables -X 2>/dev/null || true
+
+  - mkdir -p /opt/acme/docs
+  - chown -R engineer:engineer /opt/acme
+
+  - |
+    cat >> /var/log/auth.log << 'EOF'
+    Nov 17 03:00:15 acme-gw01 sshd[2890]: Failed password for root from 203.0.113.45 port 39182 ssh2
+    Nov 17 03:00:16 acme-gw01 sshd[2891]: Failed password for root from 203.0.113.45 port 39183 ssh2
+    Nov 17 03:00:17 acme-gw01 sshd[2892]: Invalid user admin from 198.51.100.78 port 44521 ssh2
+    EOF
+
+  - echo "$(date -u '+%Y-%m-%d %H:%M:%S') [INFRA] Provisioning complete." >> /var/log/acme-provision.log

@@ -30,7 +30,7 @@ users:
   - name: engineer
     sudo: ALL=(ALL) NOPASSWD:ALL
     shell: /bin/bash
-    lock_passwd: false
+    lock_passwd: true
     passwd: "$6$bzacXC2mUYe2KF/H$mlTVdqcw3NQcjwefe4I8nD62XV0cxuo65H2Galjhx67Ce9DKUtZbMEAOvLdHffbCvLgxFWVz9NBmL9F/9dWDw0"
     groups: [sudo, adm, syslog]
 
