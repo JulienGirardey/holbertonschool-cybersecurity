@@ -1,0 +1,3 @@
+.malware.com
+.evil.org
+.phishing.net
