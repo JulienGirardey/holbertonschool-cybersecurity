@@ -1,0 +1,4 @@
+# Generated when the scripts run
+*.log
+ports_before.txt
+ports_after.txt
