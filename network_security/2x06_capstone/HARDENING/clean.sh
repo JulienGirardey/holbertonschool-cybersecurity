@@ -7,7 +7,7 @@
 #
 # Business constraints kept:
 #   - FTP for Finance: served by the DMZ server through the VPN (firewall.sh);
-#     the gateway vsftpd is hardened, not removed (unreachable behind firewall.sh)
+#     the gateway vsftpd is disabled once that server answers, hardened until then
 #   - SSH for IT: key-only is enforced only if an SSH key exists (no lockout)
 #   - Database, web, DNS/DHCP and routing are not touched
 
@@ -99,7 +99,7 @@ ss -tulpn > "$WORKDIR/ports_before.txt" 2>/dev/null
 # Cleartext / legacy remote-access services: no reason to exist on a gateway.
 # They are purged (package + config removed).
 # Audit findings: inetd.service enabled at boot, telnetd installed.
-# vsftpd is NOT removed: it was the Finance FTP during the audit (secured below).
+# vsftpd is NOT purged: it was the Finance FTP during the audit (handled below).
 PURGE_PKGS=(
     openbsd-inetd inetutils-inetd xinetd
     telnetd inetutils-telnetd telnet
@@ -151,14 +151,28 @@ for proc in "${KILL_PROCS[@]}"; do
     fi
 done
 
-log "=== [1] Securing FTP (kept for Finance) ==="
+log "=== [1] FTP for Finance ==="
 VSFTPD_CONF="/etc/vsftpd.conf"
 FTP_USERLIST="/etc/vsftpd.userlist"
 FINANCE_GROUP="finance"
 # Finance FTP accounts, space separated (empty: members of FINANCE_GROUP)
 FTP_USERS="${FTP_USERS:-}"
+# FTP server in the DMZ (firewall.sh: FTP_HOST). Once it answers, the gateway FTP
+# is no longer needed; until then it is kept (hardened) so Finance keeps working.
+FTP_HOST="10.50.60.40"
+GATEWAY_FTP="${GATEWAY_FTP:-no}"
 
-if [ -f "$VSFTPD_CONF" ]; then
+if [ "$GATEWAY_FTP" = "no" ] \
+    && systemctl list-unit-files vsftpd.service --no-legend 2>/dev/null | grep -q . \
+    && timeout 3 bash -c "</dev/tcp/$FTP_HOST/21" 2>/dev/null; then
+    log "[i] DMZ FTP server $FTP_HOST answers: the gateway FTP is no longer needed"
+    run systemctl disable --now vsftpd.service
+    run systemctl mask vsftpd.service
+    ok "Disabled and masked: vsftpd.service"
+elif [ -f "$VSFTPD_CONF" ]; then
+    if [ "$GATEWAY_FTP" = "no" ]; then
+        log "[!] DMZ FTP server $FTP_HOST unreachable: gateway vsftpd kept (hardened) so Finance keeps FTP"
+    fi
     backup_once "$VSFTPD_CONF"
     # listen and listen_ipv6 cannot both be YES: IPv4 only
     set_option "$VSFTPD_CONF" listen "=" YES
