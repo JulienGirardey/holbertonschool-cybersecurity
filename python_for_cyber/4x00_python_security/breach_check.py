@@ -2,6 +2,10 @@
 import argparse
 import sys
 
+def clean_data(lines: list) -> list:
+    result1 = [x.strip() for x in lines if x.strip() and not x.startswith("#")]
+    return result1
+
 def read_file(filename: str) -> list:
     try:
         with open(filename) as f:
@@ -20,8 +24,8 @@ def main():
     parser.add_argument("-v", "--verbose", action="store_true", help="increase output verbosity")
     parser.add_argument("-o", "--output", type=str,help="An optional string (Output report file path).")
     args = parser.parse_args()
-    result = read_file(args.file)
-    print(result)
+    result = clean_data(read_file(args.file))
+    print(clean_data([' user@mail.com:pass ', '', '# Comment']))
 
 if __name__ == "__main__":
     main()
