@@ -2,34 +2,56 @@
 import argparse
 import sys
 import re
+import logging
+from logging.handlers import RotatingFileHandler
+
+# define logger
+logger = logging.getLogger("breach_check")
+logger.setLevel(logging.DEBUG)
+
+# define logger format
+formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+
+# display debug logger on console
+console = logging.StreamHandler()
+console.setLevel(logging.INFO)
+console.setFormatter(formatter)
+
+# display others logger on log file
+file = logging.FileHandler("breach_check.log")
+file.setLevel(logging.DEBUG)
+file.setFormatter(formatter)
+
+# plug handlers to the logger
+logger.addHandler(console)
+logger.addHandler(file)
 
 def validate_line(line: str) -> bool:
     return bool(re.fullmatch(r"[\w.-]+@\w+\.\w+:.+", line))
-
 
 def clean_data(lines: list) -> list:
     result1 = [x.strip() for x in lines if x.strip() and not x.strip().startswith("#")]
     return result1
 
 def read_file(filename: str) -> list:
+    logger.info(f"Processing file...")
     try:
+        logger.debug("Starting readinf file on line 21...")
         with open(filename) as f:
             return f.read().splitlines()
     except FileNotFoundError:
-        print(f"[ERROR] File not found: {filename}", file=sys.stderr)
+        logger.error(f"File not found: {filename}")
         sys.exit(1)
     except PermissionError:
-        print(f"[ERROR] Permission denied: {filename}", file=sys.stderr)
+        logger.error(f"Permmission denied: {filename}")
         sys.exit(1)
-    
 
 def main():
     parser = argparse.ArgumentParser(description="Description of my program")
     parser.add_argument("-f", "--file", required=True, type=str, help="A mandatory string (Input file path).")
     parser.add_argument("-v", "--verbose", action="store_true", help="increase output verbosity")
     parser.add_argument("-o", "--output", type=str,help="An optional string (Output report file path).")
-    args = parser.parse_args()
-    result = validate_line("usermail.com:pass")
+    result = read_file("test.txt")
     print(result)
 
 if __name__ == "__main__":
