@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 import argparse
 import sys
+import re
+
+def validate_line(line: str) -> bool:
+    return bool(re.fullmatch(r"[\w.-]+@\w+\.\w+:.+", line))
+
 
 def clean_data(lines: list) -> list:
-    result1 = [x.strip() for x in lines if x.strip() and not x.startswith("#")]
+    result1 = [x.strip() for x in lines if x.strip() and not x.strip().startswith("#")]
     return result1
 
 def read_file(filename: str) -> list:
@@ -24,8 +29,8 @@ def main():
     parser.add_argument("-v", "--verbose", action="store_true", help="increase output verbosity")
     parser.add_argument("-o", "--output", type=str,help="An optional string (Output report file path).")
     args = parser.parse_args()
-    result = clean_data(read_file(args.file))
-    print(clean_data([' user@mail.com:pass ', '', '# Comment']))
+    result = validate_line("usermail.com:pass")
+    print(result)
 
 if __name__ == "__main__":
     main()
