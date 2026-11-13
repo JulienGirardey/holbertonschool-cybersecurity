@@ -6,7 +6,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 # define logger
-logger = logging.getLogger("breach_check")
+logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
 # define logger format
@@ -34,16 +34,16 @@ def clean_data(lines: list) -> list:
     return result1
 
 def read_file(filename: str) -> list:
-    logger.info(f"Processing file...")
+    logging.info(f"Processing file...")
     try:
-        logger.debug("Starting readinf file on line 21...")
+        logging.debug("Starting readinf file on line 21...")
         with open(filename) as f:
             return f.read().splitlines()
     except FileNotFoundError:
-        logger.error(f"File not found: {filename}")
+        logging.error(f"File not found: {filename}")
         sys.exit(1)
     except PermissionError:
-        logger.error(f"Permmission denied: {filename}")
+        logging.error(f"Permmission denied: {filename}")
         sys.exit(1)
 
 def main():
