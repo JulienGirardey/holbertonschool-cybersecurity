@@ -26,6 +26,20 @@ file.setFormatter(formatter)
 logger.addHandler(console)
 logger.addHandler(file)
 
+def check_policy(password: str) -> str:
+    common_psw = ["password", 123456]
+
+    if len(password) < 8:
+        return "WEAK"
+    elif password.isalpha():
+        return "WEAK"
+    elif password.isdigit():
+        return "WEAK"
+    elif password in common_psw:
+        return "WEAK"
+    else:
+        return "COMPLIANT"
+
 def validate_line(line: str) -> bool:
     return bool(re.fullmatch(r"[\w.-]+@\w+\.\w+:.+", line))
 
@@ -53,6 +67,8 @@ def main():
     parser.add_argument("-o", "--output", type=str,help="An optional string (Output report file path).")
     result = read_file("test.txt")
     print(result)
+    password = "azerty123"
+    print(check_policy(password))
 
 if __name__ == "__main__":
     main()
