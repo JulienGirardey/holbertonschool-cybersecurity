@@ -4,6 +4,7 @@ import sys
 import re
 import logging
 import hashlib
+import configparser
 
 # define logger
 logger = logging.getLogger()
@@ -26,6 +27,16 @@ file.setFormatter(formatter)
 logger.addHandler(console)
 logger.addHandler(file)
 
+config = configparser.ConfigParser()
+found = config.read("config.ini")
+
+if not found:
+    print("file not found")
+    sys.exit(1)
+
+salt = config["SECURITY"]["salt"]
+minLenght = config.getint("SECURITY", "MinLenght")
+
 def hash_password(password: str, salt: str) -> str:
     data = password.encode()
     encode_salt = salt.encode()
@@ -36,7 +47,7 @@ def hash_password(password: str, salt: str) -> str:
 def check_policy(password: str) -> str:
     common_psw = ["password", "123456"]
 
-    if len(password) < 8:
+    if len(password) < minLenght:
         return "WEAK"
     elif password.isalpha():
         return "WEAK"
