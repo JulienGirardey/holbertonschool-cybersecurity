@@ -31,15 +31,15 @@ config = configparser.ConfigParser()
 found = config.read("config.ini")
 
 if not found:
-    print("file not found")
+    print("[ERROR] Config file missing")
     sys.exit(1)
 
-salt = config["SECURITY"]["salt"]
-minLenght = config.getint("SECURITY", "MinLenght")
+salt_conf = config["SECURITY"]["salt"]
+minLength = config.getint("SECURITY", "MinLength")
 
-def hash_password(password: str, salt: str) -> str:
+def hash_password(password: str, salt_conf: str) -> str:
     data = password.encode()
-    encode_salt = salt.encode()
+    encode_salt = salt_conf.encode()
     data_salt = data + encode_salt
     h = hashlib.sha256(data_salt)
     return h.hexdigest()
@@ -47,7 +47,7 @@ def hash_password(password: str, salt: str) -> str:
 def check_policy(password: str) -> str:
     common_psw = ["password", "123456"]
 
-    if len(password) < minLenght:
+    if len(password) < minLength:
         return "WEAK"
     elif password.isalpha():
         return "WEAK"
