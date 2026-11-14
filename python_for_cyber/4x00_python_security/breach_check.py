@@ -3,7 +3,7 @@ import argparse
 import sys
 import re
 import logging
-from logging.handlers import RotatingFileHandler
+import hashlib
 
 # define logger
 logger = logging.getLogger()
@@ -25,6 +25,14 @@ file.setFormatter(formatter)
 # plug handlers to the logger
 logger.addHandler(console)
 logger.addHandler(file)
+
+def hash_password(password: str, salt: str) -> str:
+    data = password.encode()
+    encode_salt = salt.encode()
+    data_salt = data + encode_salt
+    h = hashlib.sha256(data_salt)
+    print(len(h.hexdigest()))
+    return h
 
 def check_policy(password: str) -> str:
     common_psw = ["password", "123456"]
@@ -67,6 +75,7 @@ def main():
     parser.add_argument("-o", "--output", type=str,help="An optional string (Output report file path).")
     password = "password"
     print(check_policy(password))
+    hash_password(password, "salt")
     result = read_file("test.txt")
     print(result)
 
