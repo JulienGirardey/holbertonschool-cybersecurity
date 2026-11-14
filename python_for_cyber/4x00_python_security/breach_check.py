@@ -31,7 +31,7 @@ def hash_password(password: str, salt: str) -> str:
     encode_salt = salt.encode()
     data_salt = data + encode_salt
     h = hashlib.sha256(data_salt)
-    return h
+    return h.hexdigest()
 
 def check_policy(password: str) -> str:
     common_psw = ["password", "123456"]
