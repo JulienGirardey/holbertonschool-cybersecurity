@@ -27,7 +27,7 @@ logger.addHandler(console)
 logger.addHandler(file)
 
 def check_policy(password: str) -> str:
-    common_psw = ["password", 123456]
+    common_psw = ["password", "123456"]
 
     if len(password) < 8:
         return "WEAK"
@@ -65,10 +65,10 @@ def main():
     parser.add_argument("-f", "--file", required=True, type=str, help="A mandatory string (Input file path).")
     parser.add_argument("-v", "--verbose", action="store_true", help="increase output verbosity")
     parser.add_argument("-o", "--output", type=str,help="An optional string (Output report file path).")
+    password = "password"
+    print(check_policy(password))
     result = read_file("test.txt")
     print(result)
-    password = "azerty123"
-    print(check_policy(password))
 
 if __name__ == "__main__":
     main()
