@@ -2,6 +2,7 @@
 import hashlib
 import re
 
+
 def hash_password(password: str, salt_conf: str) -> str:
     data = password.encode()
     encode_salt = salt_conf.encode()
@@ -9,8 +10,10 @@ def hash_password(password: str, salt_conf: str) -> str:
     h = hashlib.sha256(data_salt)
     return h.hexdigest()
 
+
 def clean_data(lines: list) -> list:
-    result1 = [x.strip() for x in lines if x.strip() and not x.strip().startswith("#")]
+    result1 = [x.strip() for x in lines if x.strip()
+               and not x.strip().startswith("#")]
     return result1
 
 
