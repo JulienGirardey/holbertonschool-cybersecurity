@@ -28,6 +28,7 @@ def clean_data(lines: list) -> list:
 
 
 def read_stream(file_path: str) -> Iterator[str]:
+    print(f"[*] LogHunter - Log Analysis Engine")
     try:
         print(f"[*] Reading: {file_path}")
         count = 0
@@ -39,16 +40,15 @@ def read_stream(file_path: str) -> Iterator[str]:
     except FileNotFoundError:
         logging.error(f"File not found: {file_path}")
         print(f"[!] No data to process. Exiting.")
-        sys.exit(1)
+        return
     except PermissionError:
         logging.error(f"Permmission denied: {file_path}")
-        sys.exit(1)
+        return
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("file")
     args = parser.parse_args()
-    print(f"[*] LogHunter - Log Analysis Engine")
     for file in read_stream(args.file):
         pass
