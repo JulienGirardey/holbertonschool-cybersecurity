@@ -3,6 +3,7 @@ import argparse
 import logging
 import sys
 from collections.abc import Iterator
+import re
 
 
 # define logger
@@ -46,9 +47,31 @@ def read_stream(file_path: str) -> Iterator[str]:
         return
 
 
+def parse_apache_line(line: str) -> dict:
+    pattern = (
+        r'^(?P<ip>\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}) '
+        r'\S+ \S+ '
+        r'\[(?P<date>[^\]]+)\] '
+        r'"(?P<method>[A-Z]+) (?P<path>\S+) (?P<protocol>[^"]+)" '
+        r'(?P<status>\d{3}) '
+        r'(?P<size>\d+|-)'
+    )
+    m = re.search(pattern, line)
+    if (m):
+        return m.groupdict()
+    else:
+        return None
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("file")
     args = parser.parse_args()
-    for file in read_stream(args.file):
-        pass
+    apache = 0
+    syslog = 0
+    for line in read_stream(args.file):
+        if (parse_apache_line(line) is not None):
+            apache += 1
+    print("--- Parsing ---")
+    print(f"[*] Apache lines: {apache}")
+    print(f"[*] Syslog lines: 0")
+    print(f"[*] Total parsed: {apache + syslog}")
