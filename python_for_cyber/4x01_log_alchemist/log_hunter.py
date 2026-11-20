@@ -5,6 +5,22 @@ import sys
 from collections.abc import Iterator
 
 
+# define logger
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+
+# define logger format
+formatter = logging.Formatter("%(levelname)s %(message)s")
+
+# display debug logger on console
+console = logging.StreamHandler()
+console.setLevel(logging.INFO)
+console.setFormatter(formatter)
+
+# plug handlers to the logger
+logger.addHandler(console)
+
+
 def clean_data(lines: list) -> list:
     result1 = (x.strip() for x in lines if x.strip()
                and not x.strip().startswith("#"))
