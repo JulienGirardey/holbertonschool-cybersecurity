@@ -3,7 +3,7 @@ import argparse
 import sys
 import logging
 import configparser
-from utils import  hash_password, clean_data, validate_line
+from utils import  hash_password, clean_data, validate_line, read_file
 
 # define logger
 logger = logging.getLogger()
@@ -49,19 +49,6 @@ def check_policy(password: str) -> str:
         return "WEAK"
     else:
         return "COMPLIANT"
-
-def read_file(filename: str) -> list:
-    logging.info(f"Processing file...")
-    try:
-        logging.debug("Starting readinf file on line 21...")
-        with open(filename) as f:
-            return f.read().splitlines()
-    except FileNotFoundError:
-        logging.error(f"File not found: {filename}")
-        sys.exit(1)
-    except PermissionError:
-        logging.error(f"Permmission denied: {filename}")
-        sys.exit(1)
 
 def main():
     parser = argparse.ArgumentParser(description="Description of my program")
