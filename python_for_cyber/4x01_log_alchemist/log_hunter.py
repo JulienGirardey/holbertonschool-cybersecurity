@@ -62,6 +62,7 @@ def parse_apache_line(line: str) -> dict:
     else:
         return None
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("file")
