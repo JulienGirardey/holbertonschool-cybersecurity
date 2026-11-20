@@ -15,8 +15,8 @@ def hash_password(password: str, salt_conf: str) -> str:
 
 
 def clean_data(lines: list) -> list:
-    result1 = [x.strip() for x in lines if x.strip()
-               and not x.strip().startswith("#")]
+    result1 = (x.strip() for x in lines if x.strip()
+               and not x.strip().startswith("#"))
     return result1
 
 
