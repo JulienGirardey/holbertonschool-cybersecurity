@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 import argparse
 import sys
-import re
 import logging
-import hashlib
 import configparser
+from utils import  hash_password, clean_data, validate_line
 
 # define logger
 logger = logging.getLogger()
@@ -37,13 +36,6 @@ if not found:
 salt_conf = config["SECURITY"]["salt"]
 minLength = config.getint("SECURITY", "MinLength")
 
-def hash_password(password: str, salt_conf: str) -> str:
-    data = password.encode()
-    encode_salt = salt_conf.encode()
-    data_salt = data + encode_salt
-    h = hashlib.sha256(data_salt)
-    return h.hexdigest()
-
 def check_policy(password: str) -> str:
     common_psw = ["password", "123456"]
 
@@ -57,13 +49,6 @@ def check_policy(password: str) -> str:
         return "WEAK"
     else:
         return "COMPLIANT"
-
-def validate_line(line: str) -> bool:
-    return bool(re.fullmatch(r"[\w.-]+@\w+\.\w+:.+", line))
-
-def clean_data(lines: list) -> list:
-    result1 = [x.strip() for x in lines if x.strip() and not x.strip().startswith("#")]
-    return result1
 
 def read_file(filename: str) -> list:
     logging.info(f"Processing file...")
