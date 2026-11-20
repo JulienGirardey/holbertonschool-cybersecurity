@@ -31,7 +31,7 @@ config = configparser.ConfigParser()
 found = config.read("config.ini")
 
 if not found:
-    print("[ERROR] Config file missing")
+    print("[ERROR] config file missing")
     sys.exit(1)
 
 salt_conf = config["SECURITY"]["salt"]
