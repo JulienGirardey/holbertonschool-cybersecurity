@@ -5,6 +5,7 @@ import logging
 import sys
 from collections.abc import Iterable, Iterator
 import re
+from urllib.parse import unquote_plus
 from typing import Optional
 
 
@@ -26,6 +27,15 @@ IP_PATTERN = re.compile(r'\b\d{1,3}(?:\.\d{1,3}){3}\b')
 GEOIP_DB = {'1.2.3.4': 'US', '5.6.7.8': 'RU'}
 BOT_SIGNATURES = ['sqlmap', 'nikto', 'curl', 'python']
 BLACKLIST = {'10.0.0.1', '192.168.1.66'}
+SQLI_SIGNATURES = [
+    re.compile(r"union(?:\s|/\*.*?\*/)+(?:all\s+)?select", re.IGNORECASE),
+    re.compile(r"'\s*or\s+'?\w+'?\s*=\s*'?\w+", re.IGNORECASE),
+    re.compile(r"\bor\s+1\s*=\s*1\b", re.IGNORECASE),
+    re.compile(r"'\s*(?:--|#)", re.IGNORECASE),
+    re.compile(r";\s*(?:drop|delete|insert|update)\s", re.IGNORECASE),
+    re.compile(r"\b(?:sleep|benchmark)\s*\(", re.IGNORECASE),
+    re.compile(r"information_schema", re.IGNORECASE),
+]
 
 
 # define logger
@@ -171,6 +181,14 @@ def check_threat_intel(log_entry: LogEntry) -> LogEntry:
     return log_entry
 
 
+def detect_sqli(log_entry: LogEntry) -> LogEntry:
+    """Set attack_type to 'SQLi' if the path matches a SQLi signature."""
+    path = unquote_plus(getattr(log_entry, 'path', None) or '')
+    if any(signature.search(path) for signature in SQLI_SIGNATURES):
+        log_entry.attack_type = 'SQLi'
+    return log_entry
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("file")
@@ -220,3 +238,15 @@ if __name__ == '__main__':
         if entry.alert_level == 'HIGH':
             high_alerts += 1
     print(f"[*] HIGH alerts: {high_alerts} entries from blacklisted IPs")
+    print("--- Attack Detection ---")
+    sqli_attempts = 0
+    xss_attempts = 0
+    for entry in entries:
+        detect_sqli(entry)
+        attack_type = getattr(entry, 'attack_type', None)
+        if attack_type == 'SQLi':
+            sqli_attempts += 1
+        elif attack_type == 'XSS':
+            xss_attempts += 1
+    print(f"[*] SQLi attempts: {sqli_attempts}")
+    print(f"[*] XSS attempts:  {xss_attempts}")
