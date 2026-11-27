@@ -5,6 +5,8 @@ import json
 import logging
 import sys
 from datetime import datetime
+from itertools import islice
+from multiprocessing import Pool
 from collections import Counter, defaultdict, deque
 from collections.abc import Iterable, Iterator
 import re
@@ -303,25 +305,85 @@ def export_report(alerts: list, filename: str, format: str = 'json') -> bool:
     return True
 
 
-if __name__ == '__main__':
+def analyze_entry(entry: LogEntry) -> LogEntry:
+    """Run every per-line enrichment and detection on one entry."""
+    enrich_ip(entry)
+    analyze_user_agent(entry)
+    check_threat_intel(entry)
+    detect_sqli(entry)
+    detect_xss(entry)
+    return entry
+
+
+def process_line(line: str) -> Optional[LogEntry]:
+    """Parse, normalize and analyze one raw line, or return None."""
+    parsed = parse_apache_line(line)
+    if parsed is not None:
+        return analyze_entry(normalize_entry(parsed, 'apache', line))
+    parsed = parse_syslog_line(line)
+    if parsed is not None:
+        return analyze_entry(normalize_entry(parsed, 'syslog', line))
+    return None
+
+
+def process_chunk(lines: list) -> list:
+    """Worker: turn a list of raw lines into analyzed LogEntry objects."""
+    results = []
+    for line in lines:
+        entry = process_line(line)
+        if entry is not None:
+            results.append(entry)
+    return results
+
+
+def read_chunks(file_path: str, chunk_size: int) -> Iterator[list]:
+    """Yield lists of at most chunk_size cleaned lines from the file."""
+    with open(file_path) as log_file:
+        lines = clean_data(log_file)
+        while True:
+            chunk = list(islice(lines, chunk_size))
+            if not chunk:
+                return
+            yield chunk
+
+
+def parallel_analyze(file_path: str, num_workers: int,
+                     chunk_size: int = 10000) -> list:
+    """Analyze the file with a pool of workers and merge the results."""
+    try:
+        with Pool(num_workers) as pool:
+            chunk_results = pool.map(process_chunk,
+                                     read_chunks(file_path, chunk_size))
+    except FileNotFoundError:
+        logging.error(f"File not found: {file_path}")
+        print("[!] No data to process. Exiting.")
+        sys.exit(1)
+    except PermissionError:
+        logging.error(f"Permission denied: {file_path}")
+        print("[!] No data to process. Exiting.")
+        sys.exit(1)
+    return [entry for chunk in chunk_results for entry in chunk]
+
+
+def main() -> None:
+    """Parse the command line and run the LogHunter pipeline."""
     parser = argparse.ArgumentParser()
     parser.add_argument("file")
     parser.add_argument("--report", metavar="FILE",
                         help="export the alerts to a JSON file")
+    parser.add_argument("--workers", type=int, default=0,
+                        help="number of worker processes (0 = sequential)")
     args = parser.parse_args()
-    apache = 0
-    syslog = 0
-    entries = []
-    for line in read_stream(args.file):
-        parsed = parse_apache_line(line)
-        if parsed is not None:
-            apache += 1
-            entries.append(normalize_entry(parsed, 'apache', line))
-            continue
-        parsed = parse_syslog_line(line)
-        if parsed is not None:
-            syslog += 1
-            entries.append(normalize_entry(parsed, 'syslog', line))
+
+    if args.workers > 0:
+        print("[*] LogHunter - Log Analysis Engine")
+        print(f"[*] Reading: {args.file} (parallel: {args.workers} workers)")
+        entries = parallel_analyze(args.file, args.workers)
+    else:
+        entries = process_chunk(read_stream(args.file))
+
+    apache = sum(1 for entry in entries if entry.service == 'http')
+    syslog = sum(1 for entry in entries if entry.service == 'ssh')
     print("--- Parsing ---")
     print(f"[*] Apache lines:  {apache}")
     print(f"[*] Syslog lines:  {syslog}")
@@ -331,58 +393,46 @@ if __name__ == '__main__':
         print("[*] Sample entry:")
         print(f"    ip={sample.ip} | service={sample.service} | "
               f"status={sample.status} | path={sample.path}")
+
     print("--- Filtering ---")
     suspicious = list(filter_logs(entries))
     print(f"[*] Suspicious (404, 500): {len(suspicious)}")
+
     print("--- Enrichment ---")
-    known_ips = 0
-    bots = 0
-    for entry in entries:
-        enrich_ip(entry)
-        if entry.country != 'UNKNOWN':
-            known_ips += 1
-        analyze_user_agent(entry)
-        if entry.is_bot:
-            bots += 1
+    known_ips = sum(1 for entry in entries if entry.country != 'UNKNOWN')
+    bots = sum(1 for entry in entries if entry.is_bot)
     print(f"[*] GeoIP: {len(entries)} entries enriched "
           f"({known_ips} known IPs)")
     print(f"[*] Bots detected: {bots}")
+
     print("--- Threat Intelligence ---")
-    high_alerts = 0
-    for entry in entries:
-        check_threat_intel(entry)
-        if entry.alert_level == 'HIGH':
-            high_alerts += 1
+    high_alerts = sum(1 for entry in entries if entry.alert_level == 'HIGH')
     print(f"[*] HIGH alerts: {high_alerts} entries from blacklisted IPs")
+
     print("--- Attack Detection ---")
-    sqli_attempts = 0
-    xss_attempts = 0
-    for entry in entries:
-        detect_sqli(entry)
-        detect_xss(entry)
-        attack_type = getattr(entry, 'attack_type', None)
-        if attack_type == 'SQLi':
-            sqli_attempts += 1
-        elif attack_type == 'XSS':
-            xss_attempts += 1
-    print(f"[*] SQLi attempts: {sqli_attempts}")
-    print(f"[*] XSS attempts:  {xss_attempts}")
+    attack_types = [getattr(entry, 'attack_type', None) for entry in entries]
+    print(f"[*] SQLi attempts: {attack_types.count('SQLi')}")
+    print(f"[*] XSS attempts:  {attack_types.count('XSS')}")
+
     print("--- Brute Force ---")
     bruteforce_alerts = list(detect_bruteforce(entries))
     print(f"[*] BRUTE_FORCE alerts: {len(bruteforce_alerts)}")
     for alert in bruteforce_alerts:
         print(f"    {alert['ip']}: {alert['count']} failures")
+
     print("--- Burst Detection ---")
     burst_alerts = list(detect_burst(entries))
     print(f"[*] BURST alerts: {len(burst_alerts)}")
     for alert in burst_alerts:
         print(f"    {alert['ip']}: {alert['count']} requests "
               f"in {alert['window']}s window")
+
     print("--- Correlation ---")
     correlation_alerts = list(correlate_events(entries))
     print("[*] CRITICAL INCIDENTS:")
     for alert in correlation_alerts:
         print(f"    {alert['ip']}: {' -> '.join(alert['stages'])}")
+
     all_alerts = bruteforce_alerts + burst_alerts + correlation_alerts
     print()
     if args.report:
@@ -392,3 +442,7 @@ if __name__ == '__main__':
     else:
         print(f"[*] Total alerts: {len(all_alerts)}")
         print("[*] Use --report <file> to export.")
+
+
+if __name__ == '__main__':
+    main()
