@@ -24,6 +24,7 @@ SYSLOG_PATTERN = re.compile(
 IP_PATTERN = re.compile(r'\b\d{1,3}(?:\.\d{1,3}){3}\b')
 
 GEOIP_DB = {'1.2.3.4': 'US', '5.6.7.8': 'RU'}
+BOT_SIGNATURES = ['sqlmap', 'nikto', 'curl', 'python']
 
 
 # define logger
@@ -143,6 +144,18 @@ def enrich_ip(log_entry: LogEntry) -> LogEntry:
     return log_entry
 
 
+def analyze_user_agent(log_entry: LogEntry) -> LogEntry:
+    """Flag the entry as a bot if it carries a known tool signature."""
+    searched_text = ' '.join([
+        getattr(log_entry, 'user_agent', None) or '',
+        getattr(log_entry, 'message', None) or '',
+        getattr(log_entry, 'raw_line', None) or '',
+    ]).lower()
+    log_entry.is_bot = any(signature in searched_text
+                           for signature in BOT_SIGNATURES)
+    return log_entry
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("file")
@@ -174,9 +187,14 @@ if __name__ == '__main__':
     print(f"[*] Suspicious (404, 500): {len(suspicious)}")
     print("--- Enrichment ---")
     known_ips = 0
+    bots = 0
     for entry in entries:
         enrich_ip(entry)
         if entry.country != 'UNKNOWN':
             known_ips += 1
+        analyze_user_agent(entry)
+        if entry.is_bot:
+            bots += 1
     print(f"[*] GeoIP: {len(entries)} entries enriched "
           f"({known_ips} known IPs)")
+    print(f"[*] Bots detected: {bots}")
