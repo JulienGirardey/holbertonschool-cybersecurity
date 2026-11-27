@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
+"""LogHunter: a log analysis engine for Apache and Syslog files."""
 import argparse
 import logging
 import sys
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 import re
 from typing import Optional
 
@@ -14,6 +15,12 @@ APACHE_PATTERN = re.compile(
     r'(?P<status>\d{3}) (?P<size>\d+|-)'
     r'(?: "(?P<referer>[^"]*)" "(?P<user_agent>[^"]*)")?'
 )
+SYSLOG_PATTERN = re.compile(
+    r'^(?P<date>[A-Z][a-z]{2}\s+\d{1,2} \d{2}:\d{2}:\d{2}) '
+    r'(?P<host>\S+) '
+    r'(?P<process>[^:\s]+): '
+    r'(?P<message>.*)$'
+)
 IP_PATTERN = re.compile(r'\b\d{1,3}(?:\.\d{1,3}){3}\b')
 
 
@@ -22,7 +29,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
 # define logger format
-formatter = logging.Formatter("%(levelname)s %(message)s")
+formatter = logging.Formatter("[%(levelname)s] %(message)s")
 
 # display debug logger on console
 console = logging.StreamHandler()
@@ -34,10 +41,11 @@ logger.addHandler(console)
 
 
 class LogEntry:
-    """A log event in a common format, whatever its source"""
+    """A log event in a common format, whatever its source."""
+
     def __init__(self, ip: str, timestamp: str, service: str,
                  message: str, raw_line: str = '') -> None:
-        """Store the fields shared by every log type"""
+        """Store the fields shared by every log type."""
         self.ip = ip
         self.timestamp = timestamp
         self.service = service
@@ -45,17 +53,19 @@ class LogEntry:
         self.raw_line = raw_line
         self.method: Optional[str] = None
         self.path: Optional[str] = None
-        self.status: Optional[str] = None
+        self.status: Optional[int] = None
         self.user_agent: Optional[str] = None
 
 
-def clean_data(lines: list) -> list:
+def clean_data(lines: Iterable[str]) -> Iterator[str]:
+    """Yield stripped lines, skipping blank lines and comments."""
     result1 = (x.strip() for x in lines if x.strip()
                and not x.strip().startswith("#"))
     return result1
 
 
 def read_stream(file_path: str) -> Iterator[str]:
+    """Yield the lines of a log file one at a time."""
     print(f"[*] LogHunter - Log Analysis Engine")
     try:
         print(f"[*] Reading: {file_path}")
@@ -67,45 +77,33 @@ def read_stream(file_path: str) -> Iterator[str]:
         print(f"[*] Lines read: {count}")
     except FileNotFoundError:
         logging.error(f"File not found: {file_path}")
-        print(f"[!] No data to process. Exiting.")
-        return
+        print("[!] No data to process. Exiting.")
+        sys.exit(1)
     except PermissionError:
-        logging.error(f"Permmission denied: {file_path}")
-        return
+        logging.error(f"Permission denied: {file_path}")
+        print("[!] No data to process. Exiting.")
+        sys.exit(1)
 
 
-def parse_apache_line(line: str) -> dict:
-    pattern = (
-        r'^(?P<ip>\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}) '
-        r'\S+ \S+ '
-        r'\[(?P<date>[^\]]+)\] '
-        r'"(?P<method>[A-Z]+) (?P<path>\S+) (?P<protocol>[^"]+)" '
-        r'(?P<status>\d{3}) '
-        r'(?P<size>\d+|-)'
-    )
-    m = re.search(pattern, line)
-    if (m):
-        return m.groupdict()
-    else:
-        return None
+def parse_apache_line(line: str) -> Optional[dict]:
+    """Parse an Apache access log line into a dict, or None."""
+    match = APACHE_PATTERN.search(line)
+    if match:
+        return match.groupdict()
+    return None
 
 
-def parse_syslog_line(line: str) -> dict:
-    pattern = (
-        r'^(?P<date>[A-Z][a-z]{2}\s+\d{1,2} \d{2}:\d{2}:\d{2}) '
-        r'(?P<host>\S+) '
-        r'(?P<process>[^:\s]+): '
-        r'(?P<message>.*)$'
-    )
-    m = re.search(pattern, line)
-    if (m):
-        return m.groupdict()
-    else:
-        return None
+def parse_syslog_line(line: str) -> Optional[dict]:
+    """Parse a Syslog line into a dict, or None."""
+    match = SYSLOG_PATTERN.search(line)
+    if match:
+        return match.groupdict()
+    return None
 
 
-def normalize_entry(parsed_dict, log_type, raw_line='') -> LogEntry:
-    """Turn an Apache or Syslog dict into a LogEntry"""
+def normalize_entry(parsed_dict: dict, log_type: str,
+                    raw_line: str = '') -> LogEntry:
+    """Turn an Apache or Syslog dict into a LogEntry."""
     if log_type == 'apache':
         entry = LogEntry(
             ip=parsed_dict['ip'],
@@ -129,6 +127,14 @@ def normalize_entry(parsed_dict, log_type, raw_line='') -> LogEntry:
     )
 
 
+def filter_logs(stream: Iterable[LogEntry],
+                status_codes: list = [404, 500]) -> Iterator[LogEntry]:
+    """Yield only the entries whose HTTP status is in status_codes."""
+    for entry in stream:
+        if getattr(entry, 'status', None) in status_codes:
+            yield entry
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("file")
@@ -147,11 +153,14 @@ if __name__ == '__main__':
             syslog += 1
             entries.append(normalize_entry(parsed, 'syslog', line))
     print("--- Parsing ---")
-    print(f"[*] Apache lines: {apache}")
-    print(f"[*] Syslog lines: 0")
-    print(f"[*] Total parsed: {apache + syslog}")
+    print(f"[*] Apache lines:  {apache}")
+    print(f"[*] Syslog lines:  {syslog}")
+    print(f"[*] Total parsed:  {apache + syslog}")
     if entries:
         sample = entries[0]
         print("[*] Sample entry:")
         print(f"    ip={sample.ip} | service={sample.service} | "
               f"status={sample.status} | path={sample.path}")
+    print("--- Filtering ---")
+    suspicious = list(filter_logs(entries))
+    print(f"[*] Suspicious (404, 500): {len(suspicious)}")
