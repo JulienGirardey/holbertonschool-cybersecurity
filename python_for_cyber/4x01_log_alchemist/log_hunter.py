@@ -3,10 +3,10 @@
 import argparse
 import json
 import logging
+import multiprocessing
 import sys
 from datetime import datetime
 from itertools import islice
-from multiprocessing import Pool
 from collections import Counter, defaultdict, deque
 from collections.abc import Iterable, Iterator
 import re
@@ -351,7 +351,7 @@ def parallel_analyze(file_path: str, num_workers: int,
                      chunk_size: int = 10000) -> list:
     """Analyze the file with a pool of workers and merge the results."""
     try:
-        with Pool(num_workers) as pool:
+        with multiprocessing.Pool(num_workers) as pool:
             chunk_results = pool.map(process_chunk,
                                      read_chunks(file_path, chunk_size))
     except FileNotFoundError:
