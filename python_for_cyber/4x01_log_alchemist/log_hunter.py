@@ -3,7 +3,8 @@
 import argparse
 import logging
 import sys
-from collections import Counter
+from datetime import datetime
+from collections import Counter, defaultdict, deque
 from collections.abc import Iterable, Iterator
 import re
 from urllib.parse import unquote_plus
@@ -229,6 +230,44 @@ def detect_bruteforce(entries: Iterable[LogEntry],
                    'alert_type': 'BRUTE_FORCE'}
 
 
+def parse_timestamp(timestamp: str) -> Optional[datetime]:
+    """Turn an Apache or Syslog timestamp into a naive datetime, or None."""
+    apache_formats = ('%d/%b/%Y:%H:%M:%S %z', '%d/%b/%Y:%H:%M:%S')
+    for time_format in apache_formats:
+        try:
+            parsed = datetime.strptime(timestamp, time_format)
+            return parsed.replace(tzinfo=None)
+        except (TypeError, ValueError):
+            continue
+    try:
+        # Syslog has no year: add a leap year so that Feb 29 parses too.
+        return datetime.strptime(f"2000 {timestamp}", '%Y %b %d %H:%M:%S')
+    except (TypeError, ValueError):
+        return None
+
+
+def detect_burst(entries: Iterable[LogEntry], window_seconds: int = 60,
+                 threshold: int = 10) -> Iterator[dict]:
+    """Yield a BURST alert when an IP sends threshold requests in a window."""
+    windows = defaultdict(deque)
+    alerted_ips = set()
+    for entry in entries:
+        ip_address = getattr(entry, 'ip', '')
+        event_time = parse_timestamp(getattr(entry, 'timestamp', ''))
+        if not ip_address or event_time is None:
+            continue
+        if ip_address in alerted_ips:
+            continue
+        window = windows[ip_address]
+        window.append(event_time)
+        while (event_time - window[0]).total_seconds() > window_seconds:
+            window.popleft()
+        if len(window) >= threshold:
+            alerted_ips.add(ip_address)
+            yield {'ip': ip_address, 'count': len(window),
+                   'window': window_seconds, 'alert_type': 'BURST'}
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("file")
@@ -296,3 +335,9 @@ if __name__ == '__main__':
     print(f"[*] BRUTE_FORCE alerts: {len(bruteforce_alerts)}")
     for alert in bruteforce_alerts:
         print(f"    {alert['ip']}: {alert['count']} failures")
+    print("--- Burst Detection ---")
+    burst_alerts = list(detect_burst(entries))
+    print(f"[*] BURST alerts: {len(burst_alerts)}")
+    for alert in burst_alerts:
+        print(f"    {alert['ip']}: {alert['count']} requests "
+              f"in {alert['window']}s window")
