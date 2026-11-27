@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """LogHunter: a log analysis engine for Apache and Syslog files."""
 import argparse
+import json
 import logging
 import sys
 from datetime import datetime
@@ -285,9 +286,28 @@ def correlate_events(entries: Iterable[LogEntry]) -> Iterator[dict]:
             ip_states[ip_address].clear()
 
 
+def export_report(alerts: list, filename: str, format: str = 'json') -> bool:
+    """Write the alerts (dicts or LogEntry objects) to a JSON file."""
+    if format != 'json':
+        logging.error(f"Unsupported report format: {format}")
+        return False
+    report = [alert if isinstance(alert, dict) else vars(alert)
+              for alert in alerts]
+    try:
+        with open(filename, 'w') as report_file:
+            json.dump(report, report_file, indent=2, default=str)
+            report_file.write('\n')
+    except OSError as error:
+        logging.error(f"Cannot write report {filename}: {error}")
+        return False
+    return True
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("file")
+    parser.add_argument("--report", metavar="FILE",
+                        help="export the alerts to a JSON file")
     args = parser.parse_args()
     apache = 0
     syslog = 0
@@ -363,3 +383,12 @@ if __name__ == '__main__':
     print("[*] CRITICAL INCIDENTS:")
     for alert in correlation_alerts:
         print(f"    {alert['ip']}: {' -> '.join(alert['stages'])}")
+    all_alerts = bruteforce_alerts + burst_alerts + correlation_alerts
+    print()
+    if args.report:
+        if export_report(all_alerts, args.report):
+            print(f"[*] Report exported: {args.report} "
+                  f"({len(all_alerts)} alerts)")
+    else:
+        print(f"[*] Total alerts: {len(all_alerts)}")
+        print("[*] Use --report <file> to export.")
