@@ -25,6 +25,7 @@ IP_PATTERN = re.compile(r'\b\d{1,3}(?:\.\d{1,3}){3}\b')
 
 GEOIP_DB = {'1.2.3.4': 'US', '5.6.7.8': 'RU'}
 BOT_SIGNATURES = ['sqlmap', 'nikto', 'curl', 'python']
+BLACKLIST = {'10.0.0.1', '192.168.1.66'}
 
 
 # define logger
@@ -161,6 +162,15 @@ def analyze_user_agent(log_entry: LogEntry) -> LogEntry:
     return log_entry
 
 
+def check_threat_intel(log_entry: LogEntry) -> LogEntry:
+    """Set alert_level to HIGH for blacklisted IPs, LOW otherwise."""
+    if getattr(log_entry, 'ip', '') in BLACKLIST:
+        log_entry.alert_level = 'HIGH'
+    else:
+        log_entry.alert_level = 'LOW'
+    return log_entry
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("file")
@@ -203,3 +213,10 @@ if __name__ == '__main__':
     print(f"[*] GeoIP: {len(entries)} entries enriched "
           f"({known_ips} known IPs)")
     print(f"[*] Bots detected: {bots}")
+    print("--- Threat Intelligence ---")
+    high_alerts = 0
+    for entry in entries:
+        check_threat_intel(entry)
+        if entry.alert_level == 'HIGH':
+            high_alerts += 1
+    print(f"[*] HIGH alerts: {high_alerts} entries from blacklisted IPs")
