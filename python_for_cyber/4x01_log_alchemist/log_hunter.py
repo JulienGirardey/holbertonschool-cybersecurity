@@ -4,6 +4,17 @@ import logging
 import sys
 from collections.abc import Iterator
 import re
+from typing import Optional
+
+
+APACHE_PATTERN = re.compile(
+    r'^(?P<ip>\d{1,3}(?:\.\d{1,3}){3}) \S+ \S+ '
+    r'\[(?P<date>[^\]]+)\] '
+    r'"(?P<method>[A-Z]+) (?P<path>\S+)(?: [^"]*)?" '
+    r'(?P<status>\d{3}) (?P<size>\d+|-)'
+    r'(?: "(?P<referer>[^"]*)" "(?P<user_agent>[^"]*)")?'
+)
+IP_PATTERN = re.compile(r'\b\d{1,3}(?:\.\d{1,3}){3}\b')
 
 
 # define logger
@@ -20,6 +31,22 @@ console.setFormatter(formatter)
 
 # plug handlers to the logger
 logger.addHandler(console)
+
+
+class LogEntry:
+    """A log event in a common format, whatever its source"""
+    def __init__(self, ip: str, timestamp: str, service: str,
+                 message: str, raw_line: str = '') -> None:
+        """Store the fields shared by every log type"""
+        self.ip = ip
+        self.timestamp = timestamp
+        self.service = service
+        self.message = message
+        self.raw_line = raw_line
+        self.method: Optional[str] = None
+        self.path: Optional[str] = None
+        self.status: Optional[str] = None
+        self.user_agent: Optional[str] = None
 
 
 def clean_data(lines: list) -> list:
@@ -77,16 +104,54 @@ def parse_syslog_line(line: str) -> dict:
         return None
 
 
+def normalize_entry(parsed_dict, log_type, raw_line='') -> LogEntry:
+    """Turn an Apache or Syslog dict into a LogEntry"""
+    if log_type == 'apache':
+        entry = LogEntry(
+            ip=parsed_dict['ip'],
+            timestamp=parsed_dict['date'],
+            service='http',
+            message=f"{parsed_dict['method']} {parsed_dict['path']}",
+            raw_line=raw_line,
+        )
+        entry.method = parsed_dict['method']
+        entry.path = parsed_dict['path']
+        entry.status = int(parsed_dict['status'])
+        entry.user_agent = parsed_dict.get('user_agent') or ''
+        return entry
+    found_ip = IP_PATTERN.search(parsed_dict['message'])
+    return LogEntry(
+        ip=found_ip.group() if found_ip else '',
+        timestamp=parsed_dict['date'],
+        service='ssh',
+        message=parsed_dict['message'],
+        raw_line=raw_line,
+    )
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("file")
     args = parser.parse_args()
     apache = 0
     syslog = 0
+    entries = []
     for line in read_stream(args.file):
-        if (parse_apache_line(line) is not None):
+        parsed = parse_apache_line(line)
+        if parsed is not None:
             apache += 1
+            entries.append(normalize_entry(parsed, 'apache', line))
+            continue
+        parsed = parse_syslog_line(line)
+        if parsed is not None:
+            syslog += 1
+            entries.append(normalize_entry(parsed, 'syslog', line))
     print("--- Parsing ---")
     print(f"[*] Apache lines: {apache}")
     print(f"[*] Syslog lines: 0")
     print(f"[*] Total parsed: {apache + syslog}")
+    if entries:
+        sample = entries[0]
+        print("[*] Sample entry:")
+        print(f"    ip={sample.ip} | service={sample.service} | "
+              f"status={sample.status} | path={sample.path}")
