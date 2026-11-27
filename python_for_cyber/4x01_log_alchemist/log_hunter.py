@@ -46,18 +46,23 @@ logger.addHandler(console)
 class LogEntry:
     """A log event in a common format, whatever its source."""
 
-    def __init__(self, ip: str, timestamp: str, service: str,
-                 message: str, raw_line: str = '') -> None:
-        """Store the fields shared by every log type."""
+    def __init__(self, ip: str = '', timestamp: str = '',
+                 service: str = '', message: str = '', raw_line: str = '',
+                 method: Optional[str] = None, path: Optional[str] = None,
+                 status: Optional[int] = None,
+                 user_agent: Optional[str] = None, **extra) -> None:
+        """Store the common fields, the HTTP fields and any extra one."""
         self.ip = ip
         self.timestamp = timestamp
         self.service = service
         self.message = message
         self.raw_line = raw_line
-        self.method: Optional[str] = None
-        self.path: Optional[str] = None
-        self.status: Optional[int] = None
-        self.user_agent: Optional[str] = None
+        self.method = method
+        self.path = path
+        self.status = int(status) if status is not None else None
+        self.user_agent = user_agent
+        for name, value in extra.items():
+            setattr(self, name, value)
 
 
 def clean_data(lines: Iterable[str]) -> Iterator[str]:
