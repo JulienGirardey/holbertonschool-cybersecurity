@@ -36,6 +36,16 @@ SQLI_SIGNATURES = [
     re.compile(r"\b(?:sleep|benchmark)\s*\(", re.IGNORECASE),
     re.compile(r"information_schema", re.IGNORECASE),
 ]
+XSS_SIGNATURES = [
+    re.compile(r"<\s*script\b", re.IGNORECASE),
+    re.compile(r"javascript\s*:", re.IGNORECASE),
+    re.compile(r"\bon(?:load|error|click|mouseover|focus)\s*=",
+               re.IGNORECASE),
+    re.compile(r"<\s*(?:img|svg|iframe|body)\b[^>]*\bon\w+\s*=",
+               re.IGNORECASE),
+    re.compile(r"\b(?:alert|prompt|confirm)\s*\(", re.IGNORECASE),
+    re.compile(r"document\.cookie", re.IGNORECASE),
+]
 
 
 # define logger
@@ -189,6 +199,16 @@ def detect_sqli(log_entry: LogEntry) -> LogEntry:
     return log_entry
 
 
+def detect_xss(log_entry: LogEntry) -> LogEntry:
+    """Set attack_type to 'XSS' if the path matches an XSS signature."""
+    if getattr(log_entry, 'attack_type', None) == 'SQLi':
+        return log_entry
+    path = unquote_plus(getattr(log_entry, 'path', None) or '')
+    if any(signature.search(path) for signature in XSS_SIGNATURES):
+        log_entry.attack_type = 'XSS'
+    return log_entry
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("file")
@@ -243,6 +263,7 @@ if __name__ == '__main__':
     xss_attempts = 0
     for entry in entries:
         detect_sqli(entry)
+        detect_xss(entry)
         attack_type = getattr(entry, 'attack_type', None)
         if attack_type == 'SQLi':
             sqli_attempts += 1
