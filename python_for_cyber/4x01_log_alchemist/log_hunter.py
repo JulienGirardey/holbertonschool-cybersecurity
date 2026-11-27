@@ -3,6 +3,7 @@
 import argparse
 import logging
 import sys
+from collections import Counter
 from collections.abc import Iterable, Iterator
 import re
 from urllib.parse import unquote_plus
@@ -209,6 +210,25 @@ def detect_xss(log_entry: LogEntry) -> LogEntry:
     return log_entry
 
 
+def detect_bruteforce(entries: Iterable[LogEntry],
+                      threshold: int = 5) -> Iterator[dict]:
+    """Yield a BRUTE_FORCE alert for each IP with too many failed logins."""
+    failures = Counter()
+    for entry in entries:
+        ip_address = getattr(entry, 'ip', '')
+        if not ip_address:
+            continue
+        failed_http = getattr(entry, 'status', None) == 401
+        failed_ssh = 'Failed password' in (getattr(entry, 'message', None)
+                                           or '')
+        if failed_http or failed_ssh:
+            failures[ip_address] += 1
+    for ip_address, count in failures.most_common():
+        if count > threshold:
+            yield {'ip': ip_address, 'count': count,
+                   'alert_type': 'BRUTE_FORCE'}
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("file")
@@ -271,3 +291,8 @@ if __name__ == '__main__':
             xss_attempts += 1
     print(f"[*] SQLi attempts: {sqli_attempts}")
     print(f"[*] XSS attempts:  {xss_attempts}")
+    print("--- Brute Force ---")
+    bruteforce_alerts = list(detect_bruteforce(entries))
+    print(f"[*] BRUTE_FORCE alerts: {len(bruteforce_alerts)}")
+    for alert in bruteforce_alerts:
+        print(f"    {alert['ip']}: {alert['count']} failures")
