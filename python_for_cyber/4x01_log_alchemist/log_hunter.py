@@ -23,6 +23,8 @@ SYSLOG_PATTERN = re.compile(
 )
 IP_PATTERN = re.compile(r'\b\d{1,3}(?:\.\d{1,3}){3}\b')
 
+GEOIP_DB = {'1.2.3.4': 'US', '5.6.7.8': 'RU'}
+
 
 # define logger
 logger = logging.getLogger()
@@ -135,6 +137,12 @@ def filter_logs(stream: Iterable[LogEntry],
             yield entry
 
 
+def enrich_ip(log_entry: LogEntry) -> LogEntry:
+    """Add a country attribute to the entry from GEOIP_DB."""
+    log_entry.country = GEOIP_DB.get(log_entry.ip, 'UNKNOWN')
+    return log_entry
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("file")
@@ -164,3 +172,11 @@ if __name__ == '__main__':
     print("--- Filtering ---")
     suspicious = list(filter_logs(entries))
     print(f"[*] Suspicious (404, 500): {len(suspicious)}")
+    print("--- Enrichment ---")
+    known_ips = 0
+    for entry in entries:
+        enrich_ip(entry)
+        if entry.country != 'UNKNOWN':
+            known_ips += 1
+    print(f"[*] GeoIP: {len(entries)} entries enriched "
+          f"({known_ips} known IPs)")
