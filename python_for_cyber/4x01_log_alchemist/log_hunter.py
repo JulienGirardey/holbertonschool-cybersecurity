@@ -268,6 +268,23 @@ def detect_burst(entries: Iterable[LogEntry], window_seconds: int = 60,
                    'window': window_seconds, 'alert_type': 'BURST'}
 
 
+def correlate_events(entries: Iterable[LogEntry]) -> Iterator[dict]:
+    """Yield a CRITICAL INCIDENT when an IP both scans and tries SQLi."""
+    ip_states = defaultdict(set)
+    for entry in entries:
+        ip_address = getattr(entry, 'ip', '')
+        if not ip_address:
+            continue
+        if getattr(entry, 'status', None) == 404:
+            ip_states[ip_address].add('scanner')
+        if getattr(entry, 'attack_type', None) == 'SQLi':
+            ip_states[ip_address].add('sqli')
+        if {'scanner', 'sqli'} <= ip_states[ip_address]:
+            yield {'ip': ip_address, 'stages': ['scanner', 'sqli'],
+                   'alert_type': 'CRITICAL INCIDENT'}
+            ip_states[ip_address].clear()
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("file")
@@ -341,3 +358,8 @@ if __name__ == '__main__':
     for alert in burst_alerts:
         print(f"    {alert['ip']}: {alert['count']} requests "
               f"in {alert['window']}s window")
+    print("--- Correlation ---")
+    correlation_alerts = list(correlate_events(entries))
+    print("[*] CRITICAL INCIDENTS:")
+    for alert in correlation_alerts:
+        print(f"    {alert['ip']}: {' -> '.join(alert['stages'])}")
